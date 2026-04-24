@@ -37,6 +37,62 @@ python Examples/run_your_algo/runKANAD.py
 **MTS (multivariate):** `SMD`, `MSL`, `SMAP`, `SWaT`, `PSM`  
 **UTS (univariate):** `AIOPS`, `NAB`, `TODS`, `UCR`, `WSD`
 
+### Downloading datasets
+
+All datasets must be placed under a `datasets/` directory at the repo root with this structure:
+
+```
+datasets/
+├── MTS/
+│   ├── SMD/
+│   │   ├── machine-1-1/
+│   │   │   ├── train.npy
+│   │   │   ├── train_label.npy
+│   │   │   ├── test.npy
+│   │   │   ├── test_label.npy
+│   │   │   └── info.json
+│   │   └── ...  (one folder per machine)
+│   ├── MSL/AllInOne/
+│   ├── SMAP/AllInOne/
+│   ├── SWaT/AllInOne/
+│   └── PSM/AllInOne/
+│       ├── train.npy
+│       ├── train_label.npy
+│       ├── test.npy
+│       ├── test_label.npy
+│       └── info.json
+└── UTS/
+    └── <DATASET>/
+        └── <time_series>/
+            ├── train.npy
+            ├── train_label.npy
+            ├── test.npy
+            ├── test_label.npy
+            └── info.json
+```
+
+**UTS datasets** are available pre-formatted from the upstream EasyTSAD project:
+- Download from https://github.com/CSTCloudOps/datasets and place under `datasets/UTS/`
+
+**MTS datasets** must be obtained from their original sources and converted to the `.npy` format above. SMD and SWaT require the preprocessing scripts from https://github.com/dawnvince/MTS_CAD.
+
+| Dataset | Source |
+|---------|--------|
+| SMD | https://github.com/NetManAIOps/OmniAnomaly |
+| SWaT | https://itrust.sutd.edu.sg/itrust-labs_datasets/dataset_info/#swat (requires access request) |
+| MSL & SMAP | https://www.kaggle.com/datasets/patrickfleith/nasa-anomaly-detection-dataset-smap-msl |
+| PSM | https://github.com/eBay/RANSynCoders |
+
+After placing datasets, update the `dirname` path in any run script to point to your local `datasets/` folder:
+
+```python
+gctrl.set_dataset(
+    dataset_type="MTS",
+    dirname="/your/path/to/EasyTSAD-OOD/datasets",
+    ...
+)
+```
+
 ## Mix and match methods / datasets
 
 Edit the relevant fields in any run script:
