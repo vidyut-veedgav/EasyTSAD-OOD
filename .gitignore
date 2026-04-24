@@ -162,14 +162,8 @@ cython_debug/
 test*
 tmp/
 datasets/
-basedata/
-pre*
-pl_*
 Results/
 ploteval*.py
 *.log
 poetry*
-pre_train/
-local_config.toml
 site/
-Model_ckpt/
