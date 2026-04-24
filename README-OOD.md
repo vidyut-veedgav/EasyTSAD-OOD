@@ -7,24 +7,30 @@ conda activate timeseries
 cd /path/to/EasyTSAD
 ```
 
-## Run an experiment
+## Methods available
+
+All four implemented MTS (multivariate) methods have run scripts. The remaining 24 methods in `EasyTSAD/Methods/` are univariate-only and do not have run scripts yet.
+
+| Method | Script | Type |
+|--------|--------|------|
+| KANAD  | `Examples/run_your_algo/runKANAD.py` | Multivariate |
+| CATCH  | `Examples/run_your_algo/runCATCH.py` | Multivariate |
+| PGRF   | `Examples/run_your_algo/runPGRF.py`  | Multivariate |
+| CAD    | `Examples/run_your_algo/runCAD.py`   | Multivariate |
+
+## Run all experiments
+
+```bash
+python Examples/run_your_algo/run_all.py
+```
+
+This runs KANAD → CATCH → PGRF → CAD in sequence. Each script trains the model, evaluates it, and saves plots. A summary of any failures is printed at the end.
+
+To run a single method:
 
 ```bash
 python Examples/run_your_algo/runKANAD.py
 ```
-
-Each script trains the model, evaluates it, and saves plots.
-
-## Methods available
-
-| Method | Script |
-|--------|--------|
-| KANAD  | `runKANAD.py` |
-| CATCH  | `runCATCH.py` |
-| PGRF   | `runPGRF.py` |
-| CAD    | `runCAD.py` |
-
-Other methods (AE, TranAD, TimesNet, etc.) live in `EasyTSAD/Methods/` — add a run script following the pattern below.
 
 ## Datasets
 
