@@ -44,7 +44,7 @@ Edit the relevant fields in any run script:
 ```python
 gctrl.set_dataset(
     dataset_type="MTS",                          # or "UTS"
-    dirname="/Users/vidyutveedgav/EasyTSAD/dataset",
+    dirname="/Users/vidyutveedgav/EasyTSAD/datasets",
     datasets=["MSL", "PSM"],                     # pick any subset
 )
 
