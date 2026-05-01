@@ -9,7 +9,7 @@ if __name__ == "__main__":
     # MTS datasets — SMD, MSL, SMAP, SWaT, PSM are all available
     gctrl.set_dataset(
         dataset_type="MTS",
-        dirname="/Users/vidyutveedgav/EasyTSAD/datasets",
+        dirname=r"d:\Sreya\Case_Western\OODResearch\EasyTSAD-OOD\datasets",
         datasets=["SMD"],
     )
 

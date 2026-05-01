@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # Use all curves in datasets:
     gctrl.set_dataset(
         dataset_type="MTS",
-        dirname="/home/safari/EasyTSAD/datasets",
+        dirname=r"d:\Sreya\Case_Western\OODResearch\EasyTSAD-OOD\datasets",
         datasets=datasets
     )
 

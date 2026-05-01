@@ -265,5 +265,5 @@ class KANAD(BaseMethod):
 
     def param_statistic(self, save_file):
         model_stats = torchinfo.summary(self.model, (self.batch_size, self.window), verbose=0)
-        with open(save_file, "w") as f:
+        with open(save_file, "w", encoding="utf-8") as f:
             f.write(str(model_stats))
