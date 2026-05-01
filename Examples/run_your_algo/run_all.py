@@ -7,6 +7,7 @@ SCRIPTS = [
     "runCATCH.py",
     "runPGRF.py",
     "runCAD.py",
+    "runSARAD.py",
 ]
 
 def main():
