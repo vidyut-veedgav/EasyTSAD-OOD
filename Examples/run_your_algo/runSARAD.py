@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     gctrl.set_dataset(
         dataset_type="MTS",
-        dirname=r"d:\Sreya\Case_Western\OODResearch\EasyTSAD-OOD\datasets",
+        dirname="/home/sks190/EasyTSAD-OOD/datasets",
         datasets=["SMD"],
     )
 

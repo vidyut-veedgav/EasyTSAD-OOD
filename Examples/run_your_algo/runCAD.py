@@ -10,7 +10,7 @@ if __name__ == "__main__":
         
     """============= [DATASET SETTINGS] ============="""
     # Specifying datasets
-    datasets = ["SWaT"]
+    datasets = ["SMD"]
     dataset_types = "MTS"
     
     # set datasets path, dirname is the absolute/relative path of dataset.
@@ -18,13 +18,13 @@ if __name__ == "__main__":
     # Use all curves in datasets:
     gctrl.set_dataset(
         dataset_type="MTS",
-        dirname=r"d:\Sreya\Case_Western\OODResearch\EasyTSAD-OOD\datasets",
+        dirname="/home/sks190/EasyTSAD-OOD/datasets",
         datasets=datasets
     )
 
 
     """============= Impletment your algo. ============="""
-    from EasyTSAD.Methods import MTSExample
+    # from EasyTSAD.Methods import MTSExample
     from EasyTSAD.Methods import CAD
     
     """============= Run your algo. ============="""

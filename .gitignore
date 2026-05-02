@@ -167,3 +167,4 @@ ploteval*.py
 *.log
 poetry*
 site/
+logs/

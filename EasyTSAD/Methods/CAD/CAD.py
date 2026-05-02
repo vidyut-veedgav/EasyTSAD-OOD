@@ -35,10 +35,12 @@ class MTSDataset(torch.utils.data.Dataset):
         
         if set_type == "train":
             rawdata = tsData.train
+        elif set_type == "valid":
+            rawdata = tsData.valid
         elif set_type == "test":
             rawdata = tsData.test
         else:
-            raise ValueError('Arg "set_type" in MTSDataset() must be one of "train", "test"')
+            raise ValueError('Arg "set_type" in MTSDataset() must be one of "train", "valid", "test"')
 
         self.len, self.var_num = rawdata.shape
         self.sample_num = max(self.len - self.window - self.horize + 1, 0)
@@ -126,6 +128,8 @@ class MMoE(pl.LightningModule):
         self.conv_dropout = config['conv_dropout']
         self.lr = config['lr']
 
+        self._val_step_outputs = []
+        self._test_step_outputs = []
         self.softmax = nn.Softmax(dim=1)
         
         self.experts = nn.ModuleList([Expert(self.n_kernel, self.window, self.n_multiv, self.experts_hidden, self.experts_out, self.exp_dropout) \
@@ -135,6 +139,7 @@ class MMoE(pl.LightningModule):
         self.share_gate = nn.Parameter(torch.randn(self.window, self.num_experts), requires_grad=True)
         self.towers = nn.ModuleList([Tower(self.experts_out, 1, self.towers_hidden, self.tow_dropout) \
             for i in range(self.tasks)])
+        self.example_input_array = torch.zeros(1, self.window, self.n_multiv)
 
             
     def forward(self, x):
@@ -164,7 +169,7 @@ class MMoE(pl.LightningModule):
         y_hat_ = self.forward(x)   
         
         loss_val = self.loss(y, y_hat_)
-        self.log("val_loss", loss_val)
+        self.log("train_loss", loss_val)
         output = OrderedDict({
             'loss': loss_val,
             'y' :y,
@@ -174,77 +179,46 @@ class MMoE(pl.LightningModule):
         
     def validation_step(self, data_batch, batch_i):
         x, y = data_batch
-        
+
         y_hat_ = self.forward(x)
 
         loss_val = self.loss(y, y_hat_)
-        
+
         self.log("val_loss", loss_val, on_step=False, on_epoch=True)
-        output = OrderedDict({
-            'val_loss': loss_val,
-            'y' :y,
-            'y_hat':y_hat_
-        })
-        return output
+        y = y.squeeze(1)
+        y_hat_ = y_hat_.squeeze(1)
+        step_loss, _ = self.cal_loss(y, y_hat_)
+        self._val_step_outputs.append([y, y_hat_, step_loss])
 
     def test_step(self, data_batch, batch_i):
         x, y = data_batch
-        
+
         y_hat_ = self.forward(x)
-        
-        
-        loss_val = self.loss(y, y_hat_)
-        output = OrderedDict({
-            'val_loss': loss_val,
-            'y' :y,
-            'y_hat':y_hat_
-        })
-        return output
-    
+
+        y = y.squeeze(1)
+        y_hat_ = y_hat_.squeeze(1)
+        loss_val, loss_max = self.cal_loss(y, y_hat_)
+        self._test_step_outputs.append([y, y_hat_, loss_val, loss_max])
+
     def cal_loss(self, y, y_hat):
         output = torch.sub(y, y_hat)
         output = torch.abs(output)
         if self.criterion == "l2":
             output = output.pow(2)
-        
+
         mean_output = torch.mean(output, dim=1)
         max_output, _ = torch.max(output, dim=1)
         return mean_output, max_output
-    
-    def validation_step_end(self, outputs):
-        y = outputs['y'].squeeze(1)
-        y_hat = outputs['y_hat'].squeeze(1)
-        loss_val, loss_max = self.cal_loss(y, y_hat)
-        return [y, y_hat, loss_val]
-    
-    def validation_epoch_end(self, outputs):
-        print("==============validation epoch end===============")
-        y = torch.cat(([output[0] for output in outputs]),0)  
-        y_hat = torch.cat(([output[1] for output in outputs]),0)  
-        val_loss = torch.cat(([output[2] for output in outputs]), 0)
-        np.set_printoptions(suppress=True)
-            
-    def test_step_end(self, outputs):
-        y = outputs['y'].squeeze(1)
-        y_hat = outputs['y_hat'].squeeze(1)
-        loss_val, loss_max = self.cal_loss(y, y_hat)
-        return [y, y_hat, loss_val, loss_max]
-    
-    def test_epoch_end(self, outputs):
-        print("==============test epoch end===============")
-        y = torch.cat(([output[0] for output in outputs]),0)  
-        y_hat = torch.cat(([output[1] for output in outputs]),0)  
-        val_loss = torch.cat(([output[2] for output in outputs]), 0)
-        val_max = torch.cat(([output[3] for output in outputs]), 0)
-        np.set_printoptions(suppress=True)
-        
-        if self.on_gpu:
-            y = y.cpu()
-            y_hat = y_hat.cpu()
-            val_loss = val_loss.cpu()
-            val_max = val_max.cpu()
-        
-        self.__anomaly_score = np.array(val_loss)
+
+    def on_validation_epoch_end(self):
+        self._val_step_outputs.clear()
+
+    def on_test_epoch_end(self):
+        outputs = self._test_step_outputs
+        val_loss = torch.cat([o[2] for o in outputs], 0)
+
+        self.__anomaly_score = np.array(val_loss.cpu())
+        self._test_step_outputs.clear()
     
     def get_anomaly_score(self):
         return self.__anomaly_score
@@ -335,7 +309,6 @@ class CAD(BaseMethod):
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
-        self.logger = TensorBoardLogger(name="logs", save_dir="./")
         print("gpu is available: ", torch.cuda.is_available())
         if torch.cuda.is_available(): self.dev = "gpu"
         else: self.dev = "cpu"
@@ -344,29 +317,31 @@ class CAD(BaseMethod):
     
 
     def train_valid_phase(self, tsData: MTSData):
+        self.config['n_multiv'] = tsData.train.shape[1]
         print("Loading Model...")
         self.model = MMoE(self.config, self.seed)
         print("Model Built...")
 
         early_stop = EarlyStopping(
-            monitor='val_loss', patience=5, verbose=True, mode='min'
+            monitor='val_loss', patience=5, verbose=True, mode='min', min_delta=1e-4
         )
-        
+
         cpkt_callback = ModelCheckpoint(
             monitor='val_loss', save_top_k=1, mode='min'
         )
-        
+
         callback = [cpkt_callback, early_stop]
-        self.trainer = Trainer(max_epochs=int(10) , callbacks=callback, logger=self.logger,\
+        logger = TensorBoardLogger(name="CAD", save_dir="./logs/tb_logs/")
+        self.trainer = Trainer(max_epochs=int(10), callbacks=callback, logger=logger,
             devices=1, accelerator=self.dev
         )
         
-        self.trainer.fit(self.model, train_dataloaders=self.model.mydataloader(train='train', tsData=tsData), val_dataloaders=self.model.mydataloader(train="train", tsData=tsData))
+        self.trainer.fit(self.model, train_dataloaders=self.model.mydataloader(train='train', tsData=tsData), val_dataloaders=self.model.mydataloader(train="valid", tsData=tsData))
         print("=========Train over============")
 
 
     def test_phase(self, tsData: MTSData):
-        self.test_result = self.trainer.test(self.model, dataloaders=self.model.mydataloader(train="test", tsData=tsData))
+        self.test_result = self.trainer.test(self.model, dataloaders=self.model.mydataloader(train="test", tsData=tsData), ckpt_path="best")
         scores = self.model.get_anomaly_score()
         print(scores.shape)
         assert scores.ndim == 1

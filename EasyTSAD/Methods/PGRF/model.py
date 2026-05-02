@@ -254,6 +254,7 @@ class PGRF(BaseMethod):
         ).to(self.device)
 
     def train_valid_phase(self, tsTrain: MTSData):
+        import copy
         num_vars = tsTrain.train.shape[1]
         self.model = self._build_model(num_vars)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
@@ -269,6 +270,9 @@ class PGRF(BaseMethod):
             batch_size=self.batch_size, shuffle=False,
         )
 
+        best_state = None
+        best_val_loss = float("inf")
+
         for epoch in range(1, self.epochs + 1):
             self.model.train()
             for x, y in train_loader:
@@ -276,6 +280,7 @@ class PGRF(BaseMethod):
                 optimizer.zero_grad()
                 preds, *_ = self.model(x)
                 loss_fn(preds, y).backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 optimizer.step()
 
             self.model.eval()
@@ -287,10 +292,18 @@ class PGRF(BaseMethod):
                     val_losses.append(loss_fn(preds, y).item())
             val_loss = float(np.mean(val_losses)) if val_losses else float("inf")
             print(f"Epoch {epoch}/{self.epochs} | val_loss: {val_loss:.6f}")
+
+            if np.isfinite(val_loss) and val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_state = copy.deepcopy(self.model.state_dict())
+
             early_stopping(val_loss, self.model)
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
+
+        if best_state is not None:
+            self.model.load_state_dict(best_state)
 
     def test_phase(self, tsData: MTSData):
         self.model.eval()
@@ -310,6 +323,7 @@ class PGRF(BaseMethod):
                 scores.append(score.cpu().numpy())
 
         scores = np.concatenate(scores)
+        scores = np.nan_to_num(scores, nan=0.0, posinf=0.0, neginf=0.0)
         pad = np.full(self.window, scores.mean())
         self.__anomaly_score = np.concatenate([pad, scores])
 

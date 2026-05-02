@@ -3,11 +3,11 @@ import sys
 from pathlib import Path
 
 SCRIPTS = [
-    "runKANAD.py",
-    "runCATCH.py",
-    "runPGRF.py",
+    # "runKANAD.py",
+    # "runCATCH.py",
+    # "runPGRF.py",
     "runCAD.py",
-    "runSARAD.py",
+    # "runSARAD.py",
 ]
 
 def main():
